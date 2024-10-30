@@ -21,11 +21,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Fetch all questions
-    const questionsSnapshot = await db.collection('questions').get();
-    const questions = questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    // Fetch all questions already answered by this FID
+    // Fetch previously answered questions for this FID
     const answeredQuestionsSnapshot = await db.collection('responses')
       .where('FID', '==', fid)
       .get();
@@ -33,13 +29,38 @@ export default async function handler(req, res) {
 
     console.log('Previously answered questions for FID:', answeredQuestionIds);
 
-    // Filter out already answered questions
-    const unansweredQuestions = questions.filter(q => !answeredQuestionIds.includes(q.id));
+    // Get total number of questions in the database to set the loop limit
+    const totalQuestionsSnapshot = await db.collection('questions').get();
+    const totalQuestionsCount = totalQuestionsSnapshot.size;
 
-    if (unansweredQuestions.length === 0) {
+    let attempts = 0;
+    let selectedQuestion = null;
+
+    while (attempts < totalQuestionsCount) {
+      // Fetch a random question
+      const randomQuestionSnapshot = await db.collection('questions').limit(1).get();
+      if (randomQuestionSnapshot.empty) {
+        console.log('No questions available in the database');
+        break;
+      }
+
+      const questionDoc = randomQuestionSnapshot.docs[0];
+      const questionId = questionDoc.id;
+
+      // Check if this question has already been answered by this FID
+      if (!answeredQuestionIds.includes(questionId)) {
+        selectedQuestion = { id: questionId, ...questionDoc.data() };
+        break;
+      }
+
+      console.log('Question already answered, fetching another...');
+      attempts++;
+    }
+
+    if (!selectedQuestion) {
       console.log('No unanswered questions available for this FID');
-      
-      // If all questions are answered, return an OG image indicating no more challenges
+
+      // If all questions are answered or we couldn't find an unanswered one, show a "No challenges" message
       return res.status(200).send(`
         <!DOCTYPE html>
         <html>
@@ -54,10 +75,7 @@ export default async function handler(req, res) {
       `);
     }
 
-    // Select a random unanswered question
-    const randomQuestion = unansweredQuestions[Math.floor(Math.random() * unansweredQuestions.length)];
-
-    console.log('Random unanswered question selected:', randomQuestion);
+    console.log('Random unanswered question selected:', selectedQuestion);
 
     res.setHeader('Content-Type', 'text/html');
     return res.status(200).send(`
@@ -65,14 +83,14 @@ export default async function handler(req, res) {
       <html>
       <head>
         <meta property="fc:frame" content="vNext" />
-        <meta property="fc:frame:image" content="${baseUrl}/api/og?questionId=${randomQuestion.id}" />
+        <meta property="fc:frame:image" content="${baseUrl}/api/og?questionId=${selectedQuestion.id}" />
         <meta property="fc:frame:input:text" content="Share your answer..." />
         <meta property="fc:frame:button:1" content="Save" />
         <meta property="fc:frame:button:1:action" content="post" />
-        <meta property="fc:frame:button:1:target" content="${baseUrl}/api/saveResponse?questionId=${randomQuestion.id}" />
+        <meta property="fc:frame:button:1:target" content="${baseUrl}/api/saveResponse?questionId=${selectedQuestion.id}" />
       </head>
       <body>
-        <p>${randomQuestion.question}</p>
+        <p>${selectedQuestion.question}</p>
       </body>
       </html>
     `);
