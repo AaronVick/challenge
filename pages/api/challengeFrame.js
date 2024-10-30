@@ -33,6 +33,7 @@ export default async function handler(req, res) {
 
   if (unansweredQuestions.length === 0) {
     console.log("No new questions available for this user.");
+    // Redirect to an error OG image when no questions are available
     return res.status(200).send(`
       <!DOCTYPE html>
       <html>
@@ -57,7 +58,7 @@ export default async function handler(req, res) {
     <html>
     <head>
       <meta property="fc:frame" content="vNext" />
-      <meta property="fc:frame:image" content="${baseUrl}/api/og?questionId=${randomQuestion.id}" />
+      <meta property="fc:frame:image" content="${baseUrl}/api/og?question=${encodeURIComponent(randomQuestion.question)}" />
       <meta property="fc:frame:input:text" content="Share your answer..." />
       <meta property="fc:frame:button:1" content="Save & Share" />
       <meta property="fc:frame:button:1:action" content="post" />

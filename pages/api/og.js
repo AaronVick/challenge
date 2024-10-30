@@ -9,7 +9,7 @@ export default async function handler(req) {
     console.log("OG handler accessed");
 
     const { searchParams } = new URL(req.url);
-    const question = searchParams.get('question') || "Ready for a challenge?";
+    const question = searchParams.get('question') || "You've completed all available challenges!";
     console.log("Received question parameter:", question);
 
     return new ImageResponse(
