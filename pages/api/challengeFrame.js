@@ -21,29 +21,27 @@ export default async function handler(req, res) {
   }
 
   try {
-    // First get all questions to ensure we have an accurate count
+    // Get all questions first
     const allQuestionsSnapshot = await db.collection('questions').get();
-    const totalQuestions = allQuestionsSnapshot.docs.length;
+    const allQuestions = allQuestionsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
     
-    // Then get answered questions for this user
+    // Get answered questions for this user
     const answeredQuestionsSnapshot = await db.collection('responses')
       .where('FID', '==', fid)
       .get();
     const answeredQuestionIds = answeredQuestionsSnapshot.docs.map(doc => doc.data().questionID);
 
-    console.log('Total questions:', totalQuestions);
+    console.log('Total questions:', allQuestions.length);
     console.log('Answered questions:', answeredQuestionIds.length);
     console.log('Previously answered IDs:', answeredQuestionIds);
 
-    // Get all available questions that haven't been answered
-    const availableQuestionsSnapshot = await db.collection('questions')
-      .where(db.FieldPath.documentId(), 'not-in', answeredQuestionIds.length ? answeredQuestionIds : ['dummy'])
-      .get();
-
-    const availableQuestions = availableQuestionsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    // Filter out answered questions
+    const availableQuestions = allQuestions.filter(question => 
+      !answeredQuestionIds.includes(question.id)
+    );
 
     console.log('Available questions:', availableQuestions.length);
 
@@ -92,7 +90,7 @@ export default async function handler(req, res) {
       </html>
     `);
   } catch (error) {
-    console.error('Error fetching questions or responses:', error);
+    console.error('Error fetching questions or responses:', error, error.stack);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
