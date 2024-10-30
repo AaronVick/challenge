@@ -2,8 +2,9 @@ import Head from 'next/head';
 
 export default function Home() {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_PATH || 'https://takethechallenge.vercel.app';
-  const shareText = encodeURIComponent(`Get a random challenge and share your thoughts with the world: ${baseUrl}`);
-  const shareLink = `https://warpcast.com/~/compose?text=${shareText}`;
+  const shareText = encodeURIComponent(`Get a random challenge and share your thoughts with the world!`);
+  const frameUrl = encodeURIComponent(baseUrl);
+  const shareLink = `https://warpcast.com/~/compose?text=${shareText}&embeds[]=${frameUrl}`;
   const imageUrl = `${baseUrl}/challenge.png`;
 
   return (
