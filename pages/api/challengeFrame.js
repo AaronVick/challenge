@@ -29,27 +29,26 @@ export default async function handler(req, res) {
 
     console.log('Previously answered questions for FID:', answeredQuestionIds);
 
+    // Check if the list of answered question IDs is indeed empty
+    if (answeredQuestionIds.length === 0) {
+      console.log('No questions have been answered by this FID yet');
+    }
+
     // Get total number of questions in the database to set the loop limit
     const totalQuestionsSnapshot = await db.collection('questions').get();
-    const totalQuestionsCount = totalQuestionsSnapshot.size;
+    const questions = totalQuestionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const totalQuestionsCount = questions.length;
 
     let attempts = 0;
     let selectedQuestion = null;
 
     while (attempts < totalQuestionsCount) {
-      // Fetch a random question
-      const randomQuestionSnapshot = await db.collection('questions').limit(1).get();
-      if (randomQuestionSnapshot.empty) {
-        console.log('No questions available in the database');
-        break;
-      }
-
-      const questionDoc = randomQuestionSnapshot.docs[0];
-      const questionId = questionDoc.id;
+      // Select a random question from the fetched questions
+      const randomQuestion = questions[Math.floor(Math.random() * totalQuestionsCount)];
 
       // Check if this question has already been answered by this FID
-      if (!answeredQuestionIds.includes(questionId)) {
-        selectedQuestion = { id: questionId, ...questionDoc.data() };
+      if (!answeredQuestionIds.includes(randomQuestion.id)) {
+        selectedQuestion = randomQuestion;
         break;
       }
 
