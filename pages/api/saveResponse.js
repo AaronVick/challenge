@@ -4,9 +4,26 @@ export const config = {
   runtime: 'nodejs',
 };
 
+const PINATA_HUB_API = 'https://hub.pinata.cloud/v1';
+const USER_DATA_TYPES = { USERNAME: 6 };
+
 async function fetchUsername(fid) {
   console.log('Fetching username for FID:', fid);
-  return `user_${fid}`;
+  try {
+    const response = await fetch(`${PINATA_HUB_API}/userDataByFid?fid=${fid}&user_data_type=${USER_DATA_TYPES.USERNAME}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) throw new Error(`Error: ${response.status}`);
+    const data = await response.json();
+    return data?.data?.userDataBody?.value || `user_${fid}`;
+  } catch (error) {
+    console.error("Error fetching username from Pinata:", error);
+    return `user_${fid}`; // Fallback in case of error
+  }
 }
 
 export default async function handler(req, res) {
@@ -59,6 +76,7 @@ export default async function handler(req, res) {
 
   try {
     const username = await fetchUsername(fid);
+    console.log('Retrieved username:', username);
 
     // Get the question text
     const questionDoc = await db.collection('questions').doc(questionId).get();
