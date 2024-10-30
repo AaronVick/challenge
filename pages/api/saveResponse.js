@@ -29,3 +29,7 @@ export default async function handler(req, res) {
 
   res.status(200).json({ redirect: shareLink });
 }
+
+async function fetchUsername(fid) {
+  return 'Unknown User'; // Replace with actual Pinata API call if needed
+}
