@@ -29,37 +29,25 @@ export default async function handler(req, res) {
 
     console.log('Previously answered questions for FID:', answeredQuestionIds);
 
-    // Get the total count of questions to set the retry limit
-    const totalQuestionsSnapshot = await db.collection('questions').get();
-    const totalQuestionsCount = totalQuestionsSnapshot.size;
-    console.log('Total questions in collection:', totalQuestionsCount);
+    // Fetch all questions first
+    const questionsSnapshot = await db.collection('questions').get();
+    const allQuestions = questionsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
 
-    let attempts = 0;
-    let selectedQuestion = null;
+    console.log('Total questions in collection:', allQuestions.length);
 
-    // Loop until we find an unanswered question or reach the retry limit
-    while (attempts < totalQuestionsCount) {
-      // Pull a random question
-      const randomIndex = Math.floor(Math.random() * totalQuestionsCount);
-      const randomQuestionDoc = totalQuestionsSnapshot.docs[randomIndex];
-      const randomQuestion = { id: randomQuestionDoc.id, ...randomQuestionDoc.data() };
+    // Filter out answered questions
+    const unansweredQuestions = allQuestions.filter(question => 
+      !answeredQuestionIds.includes(question.id)
+    );
 
-      console.log('Attempt:', attempts + 1, 'Random question:', randomQuestion);
+    console.log('Available unanswered questions:', unansweredQuestions.length);
 
-      // Check if this question has already been answered by this FID
-      if (!answeredQuestionIds.includes(randomQuestion.id)) {
-        selectedQuestion = randomQuestion;
-        break;
-      }
-
-      console.log('Question already answered, trying another...');
-      attempts++;
-    }
-
-    if (!selectedQuestion) {
+    if (unansweredQuestions.length === 0) {
       console.log('No unanswered questions available for this FID');
       
-      // If all questions have been attempted and were previously answered, show a "No challenges" message
       return res.status(200).send(`
         <!DOCTYPE html>
         <html>
@@ -73,6 +61,10 @@ export default async function handler(req, res) {
         </html>
       `);
     }
+
+    // Select a random question from unanswered questions
+    const randomIndex = Math.floor(Math.random() * unansweredQuestions.length);
+    const selectedQuestion = unansweredQuestions[randomIndex];
 
     console.log('Random unanswered question selected:', selectedQuestion);
 
