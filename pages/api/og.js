@@ -31,7 +31,6 @@ export default async function handler(req) {
         >
           <h1 style={{ fontSize: '48px', marginBottom: '20px', color: '#FFD700' }}>Challenge</h1>
           <p style={{ fontSize: '36px', marginBottom: '30px' }}>{decodeURIComponent(question)}</p>
-          <p style={{ fontSize: '28px', color: '#4CAF50' }}>Are you up for a challenge?</p>
         </div>
       ),
       {
