@@ -1,7 +1,7 @@
 import Head from 'next/head';
 
 export default function Home() {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_PATH || 'https:\\takethechallenge.vercel.app';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_PATH || 'https://takethechallenge.vercel.app';
 
     return (
       <>
