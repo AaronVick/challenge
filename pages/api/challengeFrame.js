@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Fetch previously answered questions for this FID
+    // Fetch all previously answered questions for this FID
     const answeredQuestionsSnapshot = await db.collection('responses')
       .where('FID', '==', fid)
       .get();
@@ -29,22 +29,22 @@ export default async function handler(req, res) {
 
     console.log('Previously answered questions for FID:', answeredQuestionIds);
 
-    // Check if the list of answered question IDs is indeed empty
-    if (answeredQuestionIds.length === 0) {
-      console.log('No questions have been answered by this FID yet');
-    }
-
-    // Get total number of questions in the database to set the loop limit
+    // Get the total count of questions to set the retry limit
     const totalQuestionsSnapshot = await db.collection('questions').get();
-    const questions = totalQuestionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    const totalQuestionsCount = questions.length;
+    const totalQuestionsCount = totalQuestionsSnapshot.size;
+    console.log('Total questions in collection:', totalQuestionsCount);
 
     let attempts = 0;
     let selectedQuestion = null;
 
+    // Loop until we find an unanswered question or reach the retry limit
     while (attempts < totalQuestionsCount) {
-      // Select a random question from the fetched questions
-      const randomQuestion = questions[Math.floor(Math.random() * totalQuestionsCount)];
+      // Pull a random question
+      const randomIndex = Math.floor(Math.random() * totalQuestionsCount);
+      const randomQuestionDoc = totalQuestionsSnapshot.docs[randomIndex];
+      const randomQuestion = { id: randomQuestionDoc.id, ...randomQuestionDoc.data() };
+
+      console.log('Attempt:', attempts + 1, 'Random question:', randomQuestion);
 
       // Check if this question has already been answered by this FID
       if (!answeredQuestionIds.includes(randomQuestion.id)) {
@@ -52,14 +52,14 @@ export default async function handler(req, res) {
         break;
       }
 
-      console.log('Question already answered, fetching another...');
+      console.log('Question already answered, trying another...');
       attempts++;
     }
 
     if (!selectedQuestion) {
       console.log('No unanswered questions available for this FID');
-
-      // If all questions are answered or we couldn't find an unanswered one, show a "No challenges" message
+      
+      // If all questions have been attempted and were previously answered, show a "No challenges" message
       return res.status(200).send(`
         <!DOCTYPE html>
         <html>
