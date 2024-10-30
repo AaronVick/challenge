@@ -4,9 +4,7 @@ export const config = {
   runtime: 'nodejs',
 };
 
-// Mock function for fetching username; replace with actual logic if needed.
 async function fetchUsername(fid) {
-  // Simulate username lookup or use a real API as required
   console.log('Fetching username for FID:', fid);
   return `user_${fid}`;
 }
@@ -16,8 +14,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_PATH || 'https://takethechallenge.vercel.app';
   const { untrustedData } = req.body || {};
-  const responseText = untrustedData?.text;
+  const responseText = untrustedData?.inputText;
   const fid = untrustedData?.fid;
   const questionId = req.query.questionId;
 
@@ -28,17 +27,47 @@ export default async function handler(req, res) {
 
   if (!responseText) {
     console.error('No response provided.');
-    return res.status(400).json({ error: 'Response cannot be empty' });
+    return res.status(400).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta property="fc:frame" content="vNext" />
+        <meta property="fc:frame:image" content="${baseUrl}/api/og?message=Please provide an answer" />
+      </head>
+      <body>
+        <p>Please provide an answer to the question.</p>
+      </body>
+      </html>
+    `);
   }
 
   if (!fid) {
     console.error('No FID provided.');
-    return res.status(400).json({ error: 'FID is required' });
+    return res.status(400).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta property="fc:frame" content="vNext" />
+        <meta property="fc:frame:image" content="${baseUrl}/api/og?message=Authentication required" />
+      </head>
+      <body>
+        <p>Authentication required.</p>
+      </body>
+      </html>
+    `);
   }
 
   try {
     const username = await fetchUsername(fid);
 
+    // Get the question text
+    const questionDoc = await db.collection('questions').doc(questionId).get();
+    if (!questionDoc.exists) {
+      throw new Error('Question not found');
+    }
+    const questionText = questionDoc.data().question;
+
+    // Save the response
     await db.collection('responses').add({
       FID: fid,
       questionID: questionId,
@@ -48,9 +77,40 @@ export default async function handler(req, res) {
     });
 
     console.log('Response saved successfully for FID:', fid);
-    res.status(200).json({ message: 'Response saved successfully' });
+    
+    // Return a frame response with question and answer in the OG image
+    return res.status(200).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta property="fc:frame" content="vNext" />
+        <meta property="fc:frame:image" content="${baseUrl}/api/shareOG?question=${encodeURIComponent(questionText)}&response=${encodeURIComponent(responseText)}" />
+        <meta property="fc:frame:button:1" content="Share" />
+        <meta property="fc:frame:button:1:action" content="post" />
+        <meta property="fc:frame:button:1:target" content="${baseUrl}/api/challengeFrame" />
+      </head>
+      <body>
+        <p>Question: ${questionText}</p>
+        <p>Your answer: ${responseText}</p>
+      </body>
+      </html>
+    `);
   } catch (error) {
     console.error('Error saving response to Firebase:', error);
-    res.status(500).json({ error: 'Failed to save response' });
+    return res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta property="fc:frame" content="vNext" />
+        <meta property="fc:frame:image" content="${baseUrl}/api/og?message=Error saving response" />
+        <meta property="fc:frame:button:1" content="Try Again" />
+        <meta property="fc:frame:button:1:action" content="post" />
+        <meta property="fc:frame:button:1:target" content="${baseUrl}/api/challengeFrame" />
+      </head>
+      <body>
+        <p>Error saving your response. Please try again.</p>
+      </body>
+      </html>
+    `);
   }
 }
