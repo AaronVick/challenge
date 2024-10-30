@@ -45,9 +45,9 @@ export default async function handler(req, res) {
 
     console.log('Available questions:', availableQuestions.length);
 
-    // If truly no questions available, show completion state with share option
-    if (availableQuestions.length === 0) {
-      console.log('User has completed all questions!');
+    // Double-check our completion logic
+    if (availableQuestions.length === 0 && answeredQuestionIds.length === allQuestions.length) {
+      console.log('User has truly completed all questions!');
       
       return res.status(200).send(`
         <!DOCTYPE html>
@@ -66,19 +66,21 @@ export default async function handler(req, res) {
       `);
     }
 
-    // Select a random question from available ones
+    // Otherwise, select and show a random question
     const randomIndex = Math.floor(Math.random() * availableQuestions.length);
     const selectedQuestion = availableQuestions[randomIndex];
 
     console.log('Selected random question:', selectedQuestion.id);
+    console.log('Rendering question frame with question:', selectedQuestion.question);
 
+    // Make sure we're actually sending the question frame
     res.setHeader('Content-Type', 'text/html');
-    return res.status(200).send(`
+    const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta property="fc:frame" content="vNext" />
-        <meta property="fc:frame:image" content="${baseUrl}/api/og?questionId=${selectedQuestion.id}" />
+        <meta property="fc:frame:image" content="${baseUrl}/api/og?question=${encodeURIComponent(selectedQuestion.question)}" />
         <meta property="fc:frame:input:text" content="Share your answer..." />
         <meta property="fc:frame:button:1" content="Save" />
         <meta property="fc:frame:button:1:action" content="post" />
@@ -88,9 +90,13 @@ export default async function handler(req, res) {
         <p>${selectedQuestion.question}</p>
       </body>
       </html>
-    `);
+    `;
+    
+    console.log('Sending HTML response:', html.substring(0, 200) + '...');
+    return res.status(200).send(html);
+
   } catch (error) {
-    console.error('Error fetching questions or responses:', error, error.stack);
+    console.error('Error in challengeFrame:', error, error.stack);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
