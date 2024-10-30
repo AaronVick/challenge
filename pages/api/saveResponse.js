@@ -6,7 +6,6 @@ export const config = {
 
 async function fetchUsername(fid) {
   try {
-    // Pinata API request without authorization, assuming open access
     const response = await fetch(`https://api.pinata.cloud/users/${fid}`, {
       method: 'GET',
     });
@@ -40,11 +39,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'FID is required' });
   }
 
-  // Fetch the username using the Pinata API
   const username = await fetchUsername(fid);
 
   try {
-    // Save the response to Firebase
     await db.collection('responses').add({
       FID: fid,
       questionID: questionId,
@@ -53,10 +50,8 @@ export default async function handler(req, res) {
       created: new Date(),
     });
 
-    const shareText = encodeURIComponent(`My response was: "${responseText}" to the challenge: "${questionId}" \n\nAre you up for a challenge?`);
-    const shareLink = `https://warpcast.com/~/compose?text=${shareText}&embeds[]=${encodeURIComponent(`${process.env.NEXT_PUBLIC_BASE_PATH}/api/og?questionId=${questionId}`)}`;
-
-    res.status(200).json({ redirect: shareLink });
+    // Redirect to `share.js` with the response and question ID
+    res.status(200).json({ redirect: `${process.env.NEXT_PUBLIC_BASE_PATH}/api/share?questionId=${questionId}&fid=${fid}` });
   } catch (error) {
     console.error('Error saving response to Firebase:', error);
     res.status(500).json({ error: 'Failed to save response' });
