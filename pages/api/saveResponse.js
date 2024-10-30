@@ -78,20 +78,18 @@ export default async function handler(req, res) {
 
     console.log('Response saved successfully for FID:', fid);
     
-    // Return a frame response with question and answer in the OG image
     return res.status(200).send(`
       <!DOCTYPE html>
       <html>
       <head>
         <meta property="fc:frame" content="vNext" />
         <meta property="fc:frame:image" content="${baseUrl}/api/shareOG?question=${encodeURIComponent(questionText)}&response=${encodeURIComponent(responseText)}" />
-        <meta property="fc:frame:button:1" content="Share" />
-        <meta property="fc:frame:button:1:action" content="post" />
-        <meta property="fc:frame:button:1:target" content="${baseUrl}/api/challengeFrame" />
+        <meta property="fc:frame:button:1" content="Share Your Response" />
+        <meta property="fc:frame:button:1:action" content="link" />
+        <meta property="fc:frame:button:1:target" content="https://warpcast.com/~/compose?text=${encodeURIComponent(`My challenge was: ${questionText}\n\nand my answer was ${responseText}\n\nAre you ready to take the challenge?`)}" />
       </head>
       <body>
-        <p>Question: ${questionText}</p>
-        <p>Your answer: ${responseText}</p>
+        <p>Response saved! Click "Share Your Response" to share.</p>
       </body>
       </html>
     `);
