@@ -1,33 +1,30 @@
 import { db } from '../../utils/firebase';
-import fetch from 'node-fetch';
 
 export const config = {
   runtime: 'nodejs',
 };
 
+// Mock function for fetching username; replace with actual logic if needed.
 async function fetchUsername(fid) {
-  try {
-    const response = await fetch(`https://api.pinata.cloud/data/users/${fid}`);
-    if (!response.ok) {
-      console.error(`Failed to fetch username for FID: ${fid}`);
-      return null;
-    }
-    const data = await response.json();
-    return data.username || null;
-  } catch (error) {
-    console.error(`Error fetching username for FID: ${fid}`, error);
-    return null;
-  }
+  // Simulate username lookup or use a real API as required
+  console.log('Fetching username for FID:', fid);
+  return `user_${fid}`;
 }
 
 export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
   const { untrustedData } = req.body || {};
   const responseText = untrustedData?.text;
   const fid = untrustedData?.fid;
   const questionId = req.query.questionId;
 
   console.log('saveResponse accessed');
-  console.log('Received data:', untrustedData);
+  console.log('Received FID:', fid);
+  console.log('Received response text:', responseText);
+  console.log('Received question ID:', questionId);
 
   if (!responseText) {
     console.error('No response provided.');
@@ -40,22 +37,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Fetch username from Pinata
     const username = await fetchUsername(fid);
-    if (!username) {
-      console.error('Failed to fetch username');
-      return res.status(500).json({ error: 'Failed to fetch username' });
-    }
 
-    // Save response to Firebase
     await db.collection('responses').add({
       FID: fid,
       questionID: questionId,
       response: responseText,
-      username,
+      username: username,
       created: new Date(),
     });
 
+    console.log('Response saved successfully for FID:', fid);
     res.status(200).json({ message: 'Response saved successfully' });
   } catch (error) {
     console.error('Error saving response to Firebase:', error);

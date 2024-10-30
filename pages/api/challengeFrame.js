@@ -5,8 +5,13 @@ export const config = {
 };
 
 export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
   const baseUrl = process.env.NEXT_PUBLIC_BASE_PATH || 'https://takethechallenge.vercel.app';
-  const fid = req.query.fid;
+  const { untrustedData } = req.body || {};
+  const fid = untrustedData?.fid;
 
   console.log('Challenge Frame Handler Accessed for FID:', fid);
 
