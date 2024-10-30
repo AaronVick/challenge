@@ -21,52 +21,58 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Fetch all previously answered questions for this FID
+    // First get all questions to ensure we have an accurate count
+    const allQuestionsSnapshot = await db.collection('questions').get();
+    const totalQuestions = allQuestionsSnapshot.docs.length;
+    
+    // Then get answered questions for this user
     const answeredQuestionsSnapshot = await db.collection('responses')
       .where('FID', '==', fid)
       .get();
     const answeredQuestionIds = answeredQuestionsSnapshot.docs.map(doc => doc.data().questionID);
 
-    console.log('Previously answered questions for FID:', answeredQuestionIds);
+    console.log('Total questions:', totalQuestions);
+    console.log('Answered questions:', answeredQuestionIds.length);
+    console.log('Previously answered IDs:', answeredQuestionIds);
 
-    // Fetch all questions first
-    const questionsSnapshot = await db.collection('questions').get();
-    const allQuestions = questionsSnapshot.docs.map(doc => ({
+    // Get all available questions that haven't been answered
+    const availableQuestionsSnapshot = await db.collection('questions')
+      .where(db.FieldPath.documentId(), 'not-in', answeredQuestionIds.length ? answeredQuestionIds : ['dummy'])
+      .get();
+
+    const availableQuestions = availableQuestionsSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
 
-    console.log('Total questions in collection:', allQuestions.length);
+    console.log('Available questions:', availableQuestions.length);
 
-    // Filter out answered questions
-    const unansweredQuestions = allQuestions.filter(question => 
-      !answeredQuestionIds.includes(question.id)
-    );
-
-    console.log('Available unanswered questions:', unansweredQuestions.length);
-
-    if (unansweredQuestions.length === 0) {
-      console.log('No unanswered questions available for this FID');
+    // If truly no questions available, show completion state with share option
+    if (availableQuestions.length === 0) {
+      console.log('User has completed all questions!');
       
       return res.status(200).send(`
         <!DOCTYPE html>
         <html>
         <head>
           <meta property="fc:frame" content="vNext" />
-          <meta property="fc:frame:image" content="${baseUrl}/api/og?message=No new challenges available" />
+          <meta property="fc:frame:image" content="${baseUrl}/api/og?message=Completed all challenges!" />
+          <meta property="fc:frame:button:1" content="Share Achievement" />
+          <meta property="fc:frame:button:1:action" content="post" />
+          <meta property="fc:frame:button:1:target" content="${baseUrl}/api/share?completed=true&fid=${fid}" />
         </head>
         <body>
-          <p>No new challenges available. Check back later!</p>
+          <p>Congratulations! You've completed all available challenges!</p>
         </body>
         </html>
       `);
     }
 
-    // Select a random question from unanswered questions
-    const randomIndex = Math.floor(Math.random() * unansweredQuestions.length);
-    const selectedQuestion = unansweredQuestions[randomIndex];
+    // Select a random question from available ones
+    const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+    const selectedQuestion = availableQuestions[randomIndex];
 
-    console.log('Random unanswered question selected:', selectedQuestion);
+    console.log('Selected random question:', selectedQuestion.id);
 
     res.setHeader('Content-Type', 'text/html');
     return res.status(200).send(`
