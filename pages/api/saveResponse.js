@@ -96,7 +96,9 @@ export default async function handler(req, res) {
 
     console.log('Response saved successfully for FID:', fid);
     
-    const castText = `My challenge was: ${questionText}\n\nAnd my answer was: ${responseText}\n\nAre you ready to take the challenge?\n\nhttps://takethechallenge.vercel.app`;
+    const castText = `My challenge was: ${questionText}\n\nAnd my answer was: ${responseText}\n\nAre you ready to take the challenge?`;
+    const frameUrl = encodeURIComponent(baseUrl);
+    const shareLink = `https://warpcast.com/~/compose?text=${encodeURIComponent(castText)}&embeds[]=${frameUrl}`;
     
     return res.status(200).send(`
       <!DOCTYPE html>
@@ -106,7 +108,7 @@ export default async function handler(req, res) {
         <meta property="fc:frame:image" content="${baseUrl}/api/shareOG?question=${encodeURIComponent(questionText)}&response=${encodeURIComponent(responseText)}" />
         <meta property="fc:frame:button:1" content="Share Your Response" />
         <meta property="fc:frame:button:1:action" content="link" />
-        <meta property="fc:frame:button:1:target" content="https://warpcast.com/~/compose?text=${encodeURIComponent(castText)}" />
+        <meta property="fc:frame:button:1:target" content="${shareLink}" />
       </head>
       <body>
         <p>Response saved! Click "Share Your Response" to share.</p>
